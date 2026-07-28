@@ -61,11 +61,15 @@
 
 ## Dependency Rule
 
-只能：
+PROJECT.md 是依赖方向的最高准据：
 
-Presentation -> Application -> Domain -> Infrastructure
+Presentation / API -> Application -> Domain
+Application -> Ports <- Adapters / Infrastructure
+Bootstrap composes implementations
 
-禁止反向依赖。
+Domain 不依赖 FastAPI、TradingView、StockDB、SDK、HTTP 客户端、数据库或 Infrastructure。Application 负责用例编排，并只通过 Ports 访问外部能力。Adapters / Infrastructure 实现 Ports；Bootstrap 是唯一装配位置。
+
+依赖边界脚本是可执行护栏。新增 Wave 1 代码时必须扩展其覆盖范围，不能以文档说明替代测试。
 
 ## Core Runtime Flow
 

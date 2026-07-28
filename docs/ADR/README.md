@@ -27,3 +27,19 @@ TradingView 只负责展示。
 ## ADR-007
 
 采用 Snapshot + Published Head 管理计算结果版本。
+
+## ADR-Market-001
+
+[Canonical Market Identity and Time](ADR-MARKET-001-canonical-market-identity-and-time.md)
+
+## ADR-Market-002
+
+[Adjustment and Raw-data Semantics](ADR-MARKET-002-adjustment-and-raw-data-semantics.md)
+
+## ADR-Market-003
+
+[Quality and Completeness Policy](ADR-MARKET-003-quality-and-completeness-policy.md)
+
+## ADR-Market-004
+
+[Dependency Health Contract](ADR-MARKET-004-dependency-health-contract.md)
