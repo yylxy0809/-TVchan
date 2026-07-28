@@ -74,8 +74,10 @@ Domain 不依赖 FastAPI、TradingView、StockDB、SDK、HTTP 客户端、数据
 ## Core Runtime Flow
 
 External Market
-→ Provider Adapter
-→ Market Domain
+→ StockDB Adapter
+→ MarketDataGateway Port
+→ MarketDataQueryService
+→ Market Domain / Quality Policy
 → Chan Engine
 → Snapshot Publisher
 → API

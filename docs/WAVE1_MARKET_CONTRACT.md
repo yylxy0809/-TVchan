@@ -20,10 +20,13 @@ Daily open_time is 09:30 Asia/Shanghai; weekly/monthly is 09:30 on first trading
 
 ## Port and errors
 
-`get_bars(query: BarQuery) -> RetrievedBars`
-`get_security(symbol: Symbol) -> Security | None`
-`list_trade_days(range: DateRange) -> tuple[date, ...]`
-`probe() -> DependencyHealth`
+`MarketDataGateway` owns:
+
+- `get_bars(query: BarQuery) -> RetrievedBars`
+- `get_security(symbol: Symbol) -> Security | None`
+- `probe() -> DependencyHealth`
+
+`TradingCalendarPort` owns `list_trade_days(range: DateRange) -> tuple[date, ...]`; it may later add session queries. It is deliberately independent of StockDB.
 
 `BarQuery` is canonical and bounded. `RetrievedBars` has sorted bars and retrieval provenance, not a quality claim. Stable errors: `INVALID_QUERY`, `UNSUPPORTED_TIMEFRAME`, `SYMBOL_NOT_FOUND` (no retry); `PROVIDER_UNAVAILABLE`, `PROVIDER_TIMEOUT` (retry); `PROVIDER_PROTOCOL_ERROR`, `NORMALIZATION_ERROR`, `DUPLICATE_CONFLICT` (no retry). Quality degradation is a result state. Logs contain no credentials, credential URLs, or raw payloads.
 
@@ -31,7 +34,7 @@ Daily open_time is 09:30 Asia/Shanghai; weekly/monthly is 09:30 on first trading
 
 SDK/HTTP implement the port only; typed settings are Bootstrap-injected. They use public provider behavior only: private SDK adjustment/merge helpers are forbidden, unsupported combinations fail, and raw data is never written back.
 
-`QualityPolicy` receives target bars, same-adjustment daily references, `NONE` daily factor bars, and calendar data. It returns qualified bars, status, report, and provenance. Missing calendar is `UNKNOWN/DEGRADED`; missing daily reference preserves bars as `DEGRADED`; gaps are never filled; repairs/drops retain provenance and use `next_day.pre_close / current.close` with `ROUND_HALF_UP` scale.
+`QualityPolicy` receives target bars, same-adjustment daily references, `NONE` daily factor bars, and calendar data. It returns qualified bars, `QualityStatus`, `CompletenessStatus`, report, and provenance. `QualityStatus` is `VALIDATED|DEGRADED|REJECTED`; `CompletenessStatus` is `COMPLETE|INCOMPLETE|UNKNOWN`. Missing calendar means completeness `UNKNOWN` and quality at least `DEGRADED`; missing daily reference preserves bars as `DEGRADED`; gaps are never filled; repairs/drops retain provenance and use `next_day.pre_close / current.close` with `ROUND_HALF_UP` scale.
 
 `/health` is liveness only. `/ready` calls a timeout-bounded probe: `READY/DEGRADED` is HTTP 200; `NOT_READY` is HTTP 503. No probe cache. `MarketDataQueryService` validates, retrieves, deduplicates, acquires references/calendar, assesses quality, and assembles results. It creates no snapshot, invokes no Chan, persists no application state, and exposes no HTTP. Wave 1 adds no public market endpoint.
 
@@ -41,9 +44,9 @@ SDK/HTTP implement the port only; typed settings are Bootstrap-injected. They us
 |---|---|
 | Domain | Decimal/OHLC, identity, time conversion, sorting, duplicate collapse/conflict |
 | Symbol/timeframe | legacy normalization, canonical set, invalid code, unsupported failure |
-| Port | bounded range, typed errors, empty vs unavailable, timeout/protocol |
+| Ports | MarketDataGateway and TradingCalendarPort isolation, bounded range, typed errors, empty vs unavailable, timeout/protocol |
 | SDK/HTTP | public-capability parity, provenance/errors, no write/private calls |
-| Quality | repair, drop, missing-reference degradation, gap, factor/provenance |
+| Quality | separate quality/completeness states, repair, drop, missing-reference degradation, gap, factor/provenance |
 | Application/DI | order, forbidden imports, liveness, readiness |
 | Regression | legacy fixtures; CI green without StockDB |
 

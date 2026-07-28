@@ -4,6 +4,10 @@
 
 Accepted for Wave 1.
 
+## Context
+
+Legacy provider names and timestamp conventions vary by adapter. A domain identity must survive a provider swap and make the period boundary unambiguous.
+
 ## Decision
 
 - A-share only: canonical `Symbol` is `SSE:<six-digit-code>` or `SZSE:<six-digit-code>`; provider symbols are adapter-only.
@@ -12,6 +16,16 @@ Accepted for Wave 1.
 - Daily bars start at 09:30 Asia/Shanghai; weekly/monthly bars start at 09:30 on their first trading day. Ranges are half-open `[start, end)`.
 - Exact duplicates collapse; same identity with different values is `DUPLICATE_CONFLICT`. Last-write-wins is forbidden.
 
+## Rejected Alternatives
+
+- Provider symbol as identity: rejected because SDK and HTTP naming are adapter concerns.
+- Closed query ranges: rejected because adjacent queries overlap.
+- Last-write-wins: rejected because it hides conflicting evidence.
+
 ## Consequences
 
 Adapters normalize legacy naming and timestamps before returning domain values. A gap requires calendar/session evidence.
+
+## Validation
+
+Tests cover provider normalization, UTC/Shanghai conversion, half-open ranges, duplicate collapse, and conflict failure.
