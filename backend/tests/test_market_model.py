@@ -389,7 +389,18 @@ def test_mutation_rejects_invalid_provenance_values(symbol: Symbol) -> None:
     for factor in (Decimal("NaN"), Decimal("Infinity"), cast(Decimal, "1")):
         with pytest.raises((TypeError, ValueError)):
             BarMutation(BarMutationKind.DROPPED, identity, "drop", factor=factor, before=snapshot)
-    for scale in (True, -1):
+
+    class IntSubclass(int):
+        pass
+
+    assert (
+        BarMutation(BarMutationKind.DROPPED, identity, "drop", before=snapshot, scale=None).scale
+        is None
+    )
+    assert (
+        BarMutation(BarMutationKind.DROPPED, identity, "drop", before=snapshot, scale=1).scale == 1
+    )
+    for scale in (True, IntSubclass(1), -1, cast(int, "1")):
         with pytest.raises(ValueError, match="scale"):
             BarMutation(BarMutationKind.DROPPED, identity, "drop", before=snapshot, scale=scale)
     for invalid_identity in (

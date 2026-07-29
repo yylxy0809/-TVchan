@@ -115,9 +115,7 @@ class BarMutation:
             raise TypeError("after must be BarValueSnapshot")
         if self.reference_identity is not None:
             _require_identity("reference_identity", self.reference_identity)
-        if self.scale is not None and (
-            isinstance(self.scale, bool) or not isinstance(self.scale, int) or self.scale < 0
-        ):
+        if self.scale is not None and (type(self.scale) is not int or self.scale < 0):
             raise ValueError("scale must be a non-negative integer")
         if self.kind is BarMutationKind.REPAIRED and any(
             value is None
