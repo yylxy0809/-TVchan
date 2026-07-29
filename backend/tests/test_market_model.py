@@ -10,8 +10,10 @@ from tvchan.domain.market import (
     Adjustment,
     Bar,
     BarMutation,
+    BarMutationKind,
     BarProvenance,
     BarQuery,
+    BarValueSnapshot,
     CompletenessStatus,
     DateRange,
     DependencyHealth,
@@ -307,6 +309,138 @@ def test_safe_text_rejects_blank_and_sensitive_values() -> None:
         BarProvenance("stockdb", datetime(2026, 1, 1, tzinfo=UTC), "token=secret")
     with pytest.raises(ValueError, match="safe"):
         MarketDataError(MarketDataErrorCode.INVALID_QUERY, " https://user:password@example.test ")
+
+
+def _snapshot() -> BarValueSnapshot:
+    return BarValueSnapshot(
+        Decimal("10"),
+        Decimal("11"),
+        Decimal("9"),
+        Decimal("10.5"),
+        Decimal("1"),
+        None,
+        Decimal("9.5"),
+    )
+
+
+def _identity(symbol: Symbol) -> tuple[Symbol, Timeframe, datetime, Adjustment]:
+    return (symbol, Timeframe.DAY_1, datetime(2026, 1, 2, 1, 30, tzinfo=UTC), Adjustment.NONE)
+
+
+def test_bar_value_snapshot_is_frozen_and_enforces_bar_numeric_contract() -> None:
+    snapshot = _snapshot()
+    assert "__dict__" not in dir(snapshot)
+    with pytest.raises(FrozenInstanceError):
+        snapshot.close = Decimal("10")  # type: ignore[misc]
+    for value in (Decimal("NaN"), Decimal("Infinity"), Decimal("-Infinity")):
+        with pytest.raises(ValueError, match="finite"):
+            BarValueSnapshot(value, Decimal("11"), Decimal("9"), Decimal("10"), None, None, None)
+    with pytest.raises(ValueError, match="OHLC"):
+        BarValueSnapshot(
+            Decimal("10"), Decimal("11"), Decimal("10.5"), Decimal("9"), None, None, None
+        )
+    with pytest.raises(ValueError, match="non-negative"):
+        BarValueSnapshot(
+            Decimal("10"), Decimal("11"), Decimal("9"), Decimal("10"), Decimal("-1"), None, None
+        )
+    with pytest.raises(ValueError, match="positive"):
+        BarValueSnapshot(
+            Decimal("10"), Decimal("11"), Decimal("9"), Decimal("10"), None, None, Decimal("0")
+        )
+
+
+def test_repaired_mutation_requires_complete_provenance(symbol: Symbol) -> None:
+    identity = _identity(symbol)
+    snapshot = _snapshot()
+    mutation = BarMutation(
+        BarMutationKind.REPAIRED,
+        identity,
+        "daily factor repair",
+        Decimal("1.1"),
+        snapshot,
+        snapshot,
+        identity,
+        2,
+    )
+    assert mutation.factor == Decimal("1.1")
+    for field in range(4, 9):
+        values: list[object] = [Decimal("1.1"), snapshot, snapshot, identity, 2]
+        values[field - 4] = None
+        with pytest.raises(ValueError, match="REPAIRED"):
+            BarMutation(BarMutationKind.REPAIRED, identity, "repair", *values)  # type: ignore[arg-type]
+
+
+def test_dropped_mutation_has_before_and_no_after(symbol: Symbol) -> None:
+    identity = _identity(symbol)
+    snapshot = _snapshot()
+    assert (
+        BarMutation(BarMutationKind.DROPPED, identity, "invalid bar", before=snapshot).before
+        is snapshot
+    )
+    with pytest.raises(ValueError, match="DROPPED"):
+        BarMutation(BarMutationKind.DROPPED, identity, "drop")
+    with pytest.raises(ValueError, match="DROPPED"):
+        BarMutation(BarMutationKind.DROPPED, identity, "drop", before=snapshot, after=snapshot)
+
+
+def test_mutation_rejects_invalid_provenance_values(symbol: Symbol) -> None:
+    identity = _identity(symbol)
+    snapshot = _snapshot()
+    for factor in (Decimal("NaN"), Decimal("Infinity"), cast(Decimal, "1")):
+        with pytest.raises((TypeError, ValueError)):
+            BarMutation(BarMutationKind.DROPPED, identity, "drop", factor=factor, before=snapshot)
+    for scale in (True, -1):
+        with pytest.raises(ValueError, match="scale"):
+            BarMutation(BarMutationKind.DROPPED, identity, "drop", before=snapshot, scale=scale)
+    for invalid_identity in (
+        ("SSE:600000", Timeframe.DAY_1, identity[2], Adjustment.NONE),
+        (symbol, Timeframe.DAY_1, datetime(2026, 1, 2, 1, 30), Adjustment.NONE),
+        (symbol, Timeframe.DAY_1, identity[2]),
+    ):
+        with pytest.raises(TypeError, match="identity"):
+            BarMutation(
+                BarMutationKind.DROPPED,
+                cast(tuple[Symbol, Timeframe, datetime, Adjustment], invalid_identity),
+                "drop",
+                before=snapshot,
+            )
+    with pytest.raises(ValueError, match="safe"):
+        BarMutation(BarMutationKind.DROPPED, identity, "https://token@host", before=snapshot)
+    with pytest.raises(TypeError, match="identity"):
+        BarMutation(
+            BarMutationKind.DROPPED,
+            identity,
+            "drop",
+            before=snapshot,
+            reference_identity=(symbol, Timeframe.DAY_1, datetime(2026, 1, 2), Adjustment.NONE),
+        )
+    with pytest.raises(TypeError, match="BarValueSnapshot"):
+        BarMutation(
+            BarMutationKind.DROPPED, identity, "drop", before=cast(BarValueSnapshot, object())
+        )
+    with pytest.raises(TypeError, match="BarValueSnapshot"):
+        BarMutation(
+            BarMutationKind.DROPPED,
+            identity,
+            "drop",
+            before=snapshot,
+            after=cast(BarValueSnapshot, object()),
+        )
+
+
+def test_quality_report_carries_multiple_immutable_mutations(symbol: Symbol) -> None:
+    identity = _identity(symbol)
+    snapshot = _snapshot()
+    mutations = (
+        BarMutation(BarMutationKind.DROPPED, identity, "drop", before=snapshot),
+        BarMutation(BarMutationKind.DROPPED, identity, "drop again", before=snapshot),
+    )
+    report = QualityReport(QualityStatus.DEGRADED, CompletenessStatus.INCOMPLETE, mutations)
+    assert report.mutations == mutations
+    with pytest.raises(TypeError, match="tuple"):
+        QualityReport(
+            QualityStatus.DEGRADED, CompletenessStatus.INCOMPLETE, cast(tuple[BarMutation, ...], [])
+        )
 
 
 def test_dependency_health_is_frozen_and_safe() -> None:

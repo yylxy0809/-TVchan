@@ -19,6 +19,7 @@ from tvchan.domain.market.model import (
 from tvchan.domain.market.quality import (
     BarMutation,
     BarMutationKind,
+    BarValueSnapshot,
     CompletenessStatus,
     QualityReport,
     QualityStatus,
@@ -32,6 +33,7 @@ __all__ = [
     "BarMutationKind",
     "BarProvenance",
     "BarQuery",
+    "BarValueSnapshot",
     "CompletenessStatus",
     "DateRange",
     "DependencyHealth",
