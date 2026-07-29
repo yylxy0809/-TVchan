@@ -32,7 +32,11 @@ class BarMutation:
     reason: str
 
     def __post_init__(self) -> None:
-        if not self.reason:
+        if not isinstance(self.kind, BarMutationKind):
+            raise TypeError("kind must be BarMutationKind")
+        if not isinstance(self.identity, tuple) or len(self.identity) != 4:
+            raise TypeError("identity must be a BarIdentity tuple")
+        if not isinstance(self.reason, str) or not self.reason.strip():
             raise ValueError("reason must not be empty")
 
 
@@ -44,5 +48,15 @@ class QualityReport:
     messages: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        if not all(message for message in self.messages):
-            raise ValueError("messages must not contain empty strings")
+        if not isinstance(self.quality, QualityStatus):
+            raise TypeError("quality must be QualityStatus")
+        if not isinstance(self.completeness, CompletenessStatus):
+            raise TypeError("completeness must be CompletenessStatus")
+        if not isinstance(self.mutations, tuple):
+            raise TypeError("mutations must be a tuple")
+        if not all(isinstance(mutation, BarMutation) for mutation in self.mutations):
+            raise TypeError("mutations must contain BarMutation values")
+        if not isinstance(self.messages, tuple):
+            raise TypeError("messages must be a tuple")
+        if not all(isinstance(message, str) and message.strip() for message in self.messages):
+            raise ValueError("messages must contain non-empty strings")

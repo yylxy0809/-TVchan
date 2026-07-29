@@ -75,6 +75,25 @@ def test_market_data_gateway_protocol_uses_only_canonical_domain_values() -> Non
     assert gateway.probe().status is DependencyStatus.READY
 
 
+def test_ports_support_runtime_structural_checks() -> None:
+    class Gateway:
+        def get_bars(self, query: BarQuery) -> RetrievedBars:
+            raise NotImplementedError
+
+        def get_security(self, symbol: Symbol) -> Security | None:
+            raise NotImplementedError
+
+        def probe(self) -> DependencyHealth:
+            raise NotImplementedError
+
+    class Calendar:
+        def list_trade_days(self, range: DateRange) -> tuple[date, ...]:
+            raise NotImplementedError
+
+    assert isinstance(Gateway(), MarketDataGateway)
+    assert isinstance(Calendar(), TradingCalendarPort)
+
+
 def test_trading_calendar_port_remains_independent_of_market_gateway() -> None:
     class FakeTradingCalendar:
         def __init__(self, trade_days: tuple[date, ...]) -> None:

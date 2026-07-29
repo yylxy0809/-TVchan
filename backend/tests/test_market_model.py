@@ -3,11 +3,13 @@ from __future__ import annotations
 from dataclasses import FrozenInstanceError, fields
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from typing import cast
 
 import pytest
 from tvchan.domain.market import (
     Adjustment,
     Bar,
+    BarMutation,
     BarProvenance,
     BarQuery,
     CompletenessStatus,
@@ -244,6 +246,69 @@ def test_error_code_retryability_is_stable(code: MarketDataErrorCode, retryable:
     assert error.code is code
 
 
+@pytest.mark.parametrize("value", ("NaN", "sNaN", "Infinity", "-Infinity"))
+def test_bar_rejects_non_finite_decimals_without_decimal_leaks(bar: Bar, value: str) -> None:
+    with pytest.raises(ValueError, match="finite"):
+        Bar(
+            bar.symbol,
+            bar.timeframe,
+            bar.open_time,
+            bar.trading_date,
+            bar.adjustment,
+            Decimal(value),
+            bar.high,
+            bar.low,
+            bar.close,
+            bar.volume,
+            bar.amount,
+            bar.pre_close,
+            bar.provenance,
+        )
+
+
+def test_value_objects_reject_runtime_type_impostors(bar: Bar, provenance: BarProvenance) -> None:
+    interval = DateRange(datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 2, tzinfo=UTC))
+    with pytest.raises(TypeError, match="Symbol"):
+        BarQuery(cast(Symbol, "SSE:600000"), Timeframe.DAY_1, interval, 1)
+    with pytest.raises(TypeError, match="Timeframe"):
+        BarQuery(bar.symbol, cast(Timeframe, "1d"), interval, 1)
+    with pytest.raises(TypeError, match="Adjustment"):
+        BarQuery(bar.symbol, Timeframe.DAY_1, interval, 1, cast(Adjustment, "NONE"))
+    with pytest.raises(TypeError, match="Symbol"):
+        Security(cast(Symbol, "SSE:600000"), None, provenance)
+    with pytest.raises(TypeError, match="DependencyStatus"):
+        DependencyHealth(
+            cast(DependencyStatus, "READY"),
+            "stockdb",
+            datetime(2026, 1, 1, tzinfo=UTC),
+            5,
+        )
+
+
+def test_nested_collections_must_be_immutable_tuples(bar: Bar, provenance: BarProvenance) -> None:
+    with pytest.raises(TypeError, match="tuple"):
+        BarProvenance(
+            "stockdb", datetime(2026, 1, 1, tzinfo=UTC), "fixture", cast(tuple[str, ...], [])
+        )
+    with pytest.raises(TypeError, match="tuple"):
+        RetrievedBars(cast(tuple[Bar, ...], [bar]), provenance)
+    with pytest.raises(TypeError, match="tuple"):
+        QualityReport(
+            QualityStatus.DEGRADED,
+            CompletenessStatus.UNKNOWN,
+            cast(tuple[BarMutation, ...], []),
+        )
+
+
+def test_safe_text_rejects_blank_and_sensitive_values() -> None:
+    with pytest.raises(ValueError, match="safe"):
+        BarProvenance(" ", datetime(2026, 1, 1, tzinfo=UTC), "fixture")
+    with pytest.raises(ValueError, match="safe"):
+        BarProvenance("stockdb", datetime(2026, 1, 1, tzinfo=UTC), "token=secret")
+    with pytest.raises(ValueError, match="safe"):
+        MarketDataError(MarketDataErrorCode.INVALID_QUERY, " https://user:password@example.test ")
+
+
 def test_dependency_health_is_frozen_and_safe() -> None:
     health = DependencyHealth(
         DependencyStatus.READY,
@@ -252,7 +317,7 @@ def test_dependency_health_is_frozen_and_safe() -> None:
         5,
     )
     assert health.status is DependencyStatus.READY
-    with pytest.raises(ValueError, match="credentials or a URL"):
+    with pytest.raises(ValueError, match="safe"):
         DependencyHealth(
             DependencyStatus.NOT_READY,
             "https://token@host",

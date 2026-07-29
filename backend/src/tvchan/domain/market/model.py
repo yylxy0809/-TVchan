@@ -73,6 +73,8 @@ def _require_decimal(name: str, value: Decimal | None, *, positive: bool) -> Non
         return
     if not isinstance(value, Decimal):
         raise TypeError(f"{name} must be Decimal")
+    if not value.is_finite():
+        raise ValueError(f"{name} must be finite")
     if positive and value <= 0:
         raise ValueError(f"{name} must be positive")
     if not positive and value < 0:
@@ -81,8 +83,24 @@ def _require_decimal(name: str, value: Decimal | None, *, positive: bool) -> Non
 
 def _require_safe_text(name: str, value: str) -> None:
     forbidden = ("://", "@", "credential", "password", "secret", "token")
-    if not value or any(part in value.lower() for part in forbidden):
-        raise ValueError(f"{name} must not contain credentials or a URL")
+    if (
+        not isinstance(value, str)
+        or not value.strip()
+        or any(part in value.lower() for part in forbidden)
+    ):
+        raise ValueError(f"{name} must be safe text without credentials or a URL")
+
+
+def _require_instance(name: str, value: object, expected_type: type[object]) -> None:
+    if not isinstance(value, expected_type):
+        raise TypeError(f"{name} must be {expected_type.__name__}")
+
+
+def _require_tuple(name: str, value: object, element_type: type[object]) -> None:
+    if not isinstance(value, tuple):
+        raise TypeError(f"{name} must be a tuple")
+    if not all(isinstance(item, element_type) for item in value):
+        raise TypeError(f"{name} must contain {element_type.__name__} values")
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,6 +111,8 @@ class DateRange:
     end: datetime
 
     def __post_init__(self) -> None:
+        _require_instance("start", self.start, datetime)
+        _require_instance("end", self.end, datetime)
         if not _is_aware(self.start) or not _is_aware(self.end):
             raise ValueError("DateRange boundaries must be timezone-aware")
         if self.start >= self.end:
@@ -113,6 +133,10 @@ class BarQuery:
     adjustment: Adjustment = Adjustment.NONE
 
     def __post_init__(self) -> None:
+        _require_instance("symbol", self.symbol, Symbol)
+        _require_instance("timeframe", self.timeframe, Timeframe)
+        _require_instance("range", self.range, DateRange)
+        _require_instance("adjustment", self.adjustment, Adjustment)
         if isinstance(self.limit, bool) or not isinstance(self.limit, int) or self.limit <= 0:
             raise ValueError("limit must be a positive integer")
 
@@ -127,9 +151,11 @@ class BarProvenance:
     def __post_init__(self) -> None:
         _require_safe_text("provider", self.provider)
         _require_safe_text("source_identity", self.source_identity)
+        _require_instance("source_time", self.source_time, datetime)
         if not _is_aware(self.source_time):
             raise ValueError("source_time must be timezone-aware")
-        if not all(isinstance(item, str) and item for item in self.transformations):
+        _require_tuple("transformations", self.transformations, str)
+        if not all(item.strip() for item in self.transformations):
             raise ValueError("transformations must contain non-empty strings")
 
 
@@ -153,6 +179,12 @@ class Bar:
     provenance: BarProvenance
 
     def __post_init__(self) -> None:
+        _require_instance("symbol", self.symbol, Symbol)
+        _require_instance("timeframe", self.timeframe, Timeframe)
+        _require_instance("open_time", self.open_time, datetime)
+        _require_instance("trading_date", self.trading_date, date)
+        _require_instance("adjustment", self.adjustment, Adjustment)
+        _require_instance("provenance", self.provenance, BarProvenance)
         if not _is_aware(self.open_time):
             raise ValueError("open_time must be timezone-aware")
         if self.open_time.astimezone(SHANGHAI).date() != self.trading_date:
@@ -189,7 +221,9 @@ class Security:
     provenance: BarProvenance
 
     def __post_init__(self) -> None:
-        if self.name is not None and not self.name:
+        _require_instance("symbol", self.symbol, Symbol)
+        _require_instance("provenance", self.provenance, BarProvenance)
+        if self.name is not None and (not isinstance(self.name, str) or not self.name.strip()):
             raise ValueError("name must be non-empty when provided")
 
 
@@ -199,6 +233,8 @@ class RetrievedBars:
     provenance: BarProvenance
 
     def __post_init__(self) -> None:
+        _require_tuple("bars", self.bars, Bar)
+        _require_instance("provenance", self.provenance, BarProvenance)
         keys = tuple(
             (str(bar.symbol), str(bar.timeframe), bar.open_time, str(bar.adjustment))
             for bar in self.bars
@@ -222,11 +258,15 @@ class DependencyHealth:
     error_code: str | None = None
 
     def __post_init__(self) -> None:
+        _require_instance("status", self.status, DependencyStatus)
         _require_safe_text("provider", self.provider)
+        _require_instance("checked_at", self.checked_at, datetime)
         if not _is_aware(self.checked_at):
             raise ValueError("checked_at must be timezone-aware")
         if self.latency_ms is not None and (
-            isinstance(self.latency_ms, bool) or self.latency_ms < 0
+            isinstance(self.latency_ms, bool)
+            or not isinstance(self.latency_ms, int)
+            or self.latency_ms < 0
         ):
             raise ValueError("latency_ms must be non-negative")
         if self.error_code is not None:

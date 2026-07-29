@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from tvchan.domain.market import (
     BarQuery,
@@ -13,6 +13,7 @@ from tvchan.domain.market import (
 )
 
 
+@runtime_checkable
 class MarketDataGateway(Protocol):
     def get_bars(self, query: BarQuery) -> RetrievedBars: ...
 
