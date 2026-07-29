@@ -106,6 +106,26 @@ def test_application_direct_implementation_import_is_rejected(tmp_path: Path) ->
     assert any("first-party 'tvchan.adapters.api'" in detail for detail in details)
 
 
+def test_s1a_application_port_may_import_domain_market(tmp_path: Path) -> None:
+    details = _details(
+        _scaffold(
+            tmp_path,
+            {"application/ports/market_data.py": "from tvchan.domain.market import BarQuery\n"},
+        )
+    )
+    assert details == []
+
+
+def test_s1a_domain_market_must_not_import_adapter(tmp_path: Path) -> None:
+    details = _details(
+        _scaffold(
+            tmp_path,
+            {"domain/market/model.py": "from tvchan.adapters.market import StockDbAdapter\n"},
+        )
+    )
+    assert any("first-party 'tvchan.adapters.market'" in detail for detail in details)
+
+
 def test_restricted_layer_third_party_import_is_rejected(tmp_path: Path) -> None:
     details = _details(_scaffold(tmp_path, {"domain/rule.py": "import requests\n"}))
     assert any("third-party 'requests'" in detail for detail in details)
