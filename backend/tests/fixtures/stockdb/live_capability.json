@@ -1,0 +1,8 @@
+{
+  "capability": "stockdb_public_sdk_live_get_data",
+  "status": "NOT_VERIFIED",
+  "reason": "Live StockDB public SDK was not verified in this formal adapter commit; offline suite never probes live and never enables allow_live.",
+  "probe": null,
+  "package": "tvchan",
+  "task": "T110-C002"
+}
