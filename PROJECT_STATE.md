@@ -2,7 +2,7 @@
 
 **状态日期：2026-07-30**
 **权威正式仓库：** `yylxy0809/-TVchan`
-**正式主干：** `main@7cbf39b73a4ddcf39cca032bd904d33959ac593a`
+**正式主干：** `main@413c1e132f70714830ff9a129679965c117799ea`
 **用途：** 新窗口、新 Agent 和审查者的唯一项目接管入口。它只记录已证实事实；架构细节仍以 `PROJECT.md`、`docs/WAVE1_MARKET_CONTRACT.md` 与 ADR 为准。
 
 ## 读法与状态标记
@@ -45,12 +45,12 @@ Domain 和 Application 不得导入 FastAPI、TradingView、StockDB SDK/HTTP 客
 | 项目 | 已证实坐标/用途 | 状态 |
 |---|---|---|
 | 远程仓库 | `https://github.com/yylxy0809/-TVchan` | 正式 |
-| 正式主干 | `main@7cbf39b73a4ddcf39cca032bd904d33959ac593a` | PR #9 与状态档案 PR #10 均已合并 |
+| 正式主干 | `main@413c1e132f70714830ff9a129679965c117799ea` | PR #9、状态档案 PR #10 与 PR #11 均已合并 |
 | 正式本地仓 | `D:/TVchan`，其当前 checkout 可能不在 `main`，所有主干事实以 `origin/main` 为准 | 只作仓库管理 |
 | S1b 工作树 | `D:/TVchan-s1b-quality-calendar@58c798dd6a92e30e8c86f43afaa8fc96a0d7ad49` | 已由 PR #8 合入 main |
 | 查询候选工作树 | `D:/TVchan-s1b-stockdb-query@f9d6c196fd7c8460d7074baa4ec3099f915ed63b` | PR #9 已合并；保留为历史证据 |
 | 查询提交链 | `58c798d → d44bdbd → f9d6c19` | PR #9 head，已由 merge `1b3465c` 进入 main |
-| 本档案工作树 | `D:/TVchan-project-state`，branch `docs/project-state-pr9` | 仅文档维护 |
+| 本档案工作树 | `D:/TVchan-project-state`，branch `docs/project-state-org` | 仅文档维护 |
 | 旧仓库 | `D:/TV` / `yylxy0809/tv` | 非正式、只读参考 |
 
 不要将旧 Wave 0、S1a、gate、checkpoint 或 audit worktree 当成当前实现分支；它们是历史证据，不是继续开发的起点。
@@ -112,6 +112,23 @@ Domain 和 Application 不得导入 FastAPI、TradingView、StockDB SDK/HTTP 客
 | P1 | real StockDB parity / provider capability | **未验证** | 需可用服务、公开 API、独立 live 证据 |
 | P2 | API/readiness/TradingView/Chan | **未授权** | 不得因离线竖切已合入而推进 |
 
+### 当前并行组织与授权边界
+
+| 组别 | 任务 | 当前事实 | 依赖 / 禁止事项 |
+|---|---|---|---|
+| A：市场只读 API 与展示 | `T114` | **进行中**：冻结 P5 市场 API 与 TradingView 契约 | 契约先于实现；不得自批最终 Oracle |
+| A：市场只读 API 与展示 | `T115` | **进行中、等待 T114**：实现 P5 市场只读 FastAPI 接口 | 只可按 T114 READY 契约实施 |
+| A：市场只读 API 与展示 | `T117` | **计划中**：TradingView 市场 datafeed | 依赖 T114 和 API 可测试边界；不得提前接线 |
+| B：chan.py 纯计算接入 | `T116` | **进行中**：只读现实映射 | 先确定最小计算切片，不得将旧项目耦合迁入 |
+| B：chan.py 纯计算接入 | `T118` | **已完成**：P3 纯计算验收工具骨架 | 候选盲、未冻结具体 Chan 算法期望 |
+| B：chan.py 纯计算接入 | `T120` | **进行中**：P3 黄金样本输入包 | 冻结来源、manifest 和未决语义，不能替代实现验收 |
+| 跨线支持 | `T121` | **进行中**：双线环境与制品可靠性基线 | 只建可重放环境证据，不裁决业务语义 |
+| 跨线支持 | `T122` | **进行中**：双线最终验收执行单 | 必须在固定对象形成后运行；首失败即停 |
+| 跨线支持 | `T123` | **计划中**：双线独立技术审查值守 | 不能审查自身实现或自身 Oracle |
+| 治理 / 状态 | `T077` 与 `T111` | **常驻** | 前者维护任务治理；后者维护本档案；均不代替技术实现 |
+
+组织原则（用户最新管理要求）：多数开发代理不得长期空闲；管理者只负责规划、分配、裁决和验收，不亲自实施业务代码。每个交付仍须由互不自证的实现、工具/Oracle、独立审查与发布责任链构成。
+
 控制面提示：历史 `T108` 记录过 SSH/HTTPS 传输阻塞；但 S1b 的正式事实已由 PR #8 / `main@9c7e119` 覆盖。若任务板仍显示其外部等待，应由任务板 owner 做事实对齐，不能把该旧状态当作当前 S1b 发布授权或阻塞。PR #9 已证明显式代理 HTTPS 路径可以原样传输并合并已批准对象。
 
 ## 8. 已知问题与风险
@@ -162,6 +179,7 @@ uv python list
 |---|---|
 | 2026-07-30 | 初版建立：记录 `main@9c7e119`、S1a/S1b 完成、S1b PR #8、离线查询候选链 `58c798d→d44bdbd→f9d6c19`、live 未验证风险、Git 代理恢复方法与 Python 固定规则。 |
 | 2026-07-30 | 维护更新：PR #9 已将离线 StockDB adapter 与 `MarketDataQueryService` 链（head `f9d6c19`）以 merge `1b3465c` 合入；随后状态档案初版 PR #10 以 merge `7cbf39b` 合入。正式 main 更新为 `7cbf39b`；离线竖切完成不等同于 live parity。 |
+| 2026-07-30 | 维护更新：状态档案 PR #11 以 merge `413c1e1` 合入，确认 PR #9 的离线查询竖切为已完成事实。随后建立 A 组（T114/T115/T117）、B 组（T116/T118/T120）及跨线支持（T121/T122/T123）；T077 与 T111 为常驻治理卡。 |
 
 ## 常驻维护规则
 
