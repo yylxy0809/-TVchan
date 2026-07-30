@@ -116,7 +116,9 @@ def test_repair_uses_the_calendar_adjacent_none_bar_only() -> None:
     )
 
     assert assessment.bars == (reference,)
-    assert assessment.report.quality is QualityStatus.DEGRADED
+    assert assessment.report.quality is QualityStatus.VALIDATED
+    assert assessment.report.completeness is CompletenessStatus.INCOMPLETE
+    assert assessment.report.missing_trade_days == (next_day,)
     assert assessment.report.mutations[0].factor == Decimal("2")
 
 
