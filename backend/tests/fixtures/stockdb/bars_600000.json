@@ -1,0 +1,157 @@
+{
+  "fixture_id": "bars_600000_v1",
+  "note": "Traceable offline fixture for SSE:600000. Values are synthetic but structurally match public StockDB get_data row shape. Not live parity evidence.",
+  "source": "hand-authored for T101 unit tests",
+  "bars": {
+    "600000": {
+      "1d": [
+        {
+          "date": "20260102",
+          "code": "600000",
+          "name": "SPDB",
+          "open": "10.01",
+          "high": "10.50",
+          "low": "9.90",
+          "close": "10.20",
+          "volume": "1000",
+          "amount": "10200",
+          "pre_close": "9.95"
+        },
+        {
+          "date": "20260105",
+          "code": "600000",
+          "name": "SPDB",
+          "open": "10.20",
+          "high": "10.80",
+          "low": "10.10",
+          "close": "10.60",
+          "volume": "1100",
+          "amount": "11500",
+          "pre_close": "10.20"
+        },
+        {
+          "date": "20260106",
+          "code": "600000",
+          "name": "SPDB",
+          "open": "10.60",
+          "high": "10.90",
+          "low": "10.40",
+          "close": "10.70",
+          "volume": "1200",
+          "amount": "12800",
+          "pre_close": "10.60"
+        },
+        {
+          "date": "20260107",
+          "code": "600000",
+          "name": "SPDB",
+          "open": "10.70",
+          "high": "11.00",
+          "low": "10.50",
+          "close": "10.90",
+          "volume": "1300",
+          "amount": "14000",
+          "pre_close": "10.70"
+        }
+      ],
+      "30m": [
+        {
+          "date": "20260102093000",
+          "code": "600000",
+          "open": "10.00",
+          "high": "10.10",
+          "low": "9.95",
+          "close": "10.05",
+          "volume": "100",
+          "amount": "1000"
+        },
+        {
+          "date": "20260102100000",
+          "code": "600000",
+          "open": "10.05",
+          "high": "10.20",
+          "low": "10.00",
+          "close": "10.15",
+          "volume": "120",
+          "amount": "1200"
+        },
+        {
+          "date": "20260102103000",
+          "code": "600000",
+          "open": "10.15",
+          "high": "10.25",
+          "low": "10.10",
+          "close": "10.20",
+          "volume": "130",
+          "amount": "1300"
+        }
+      ],
+      "5m": [
+        {
+          "date": "20260102093000",
+          "code": "600000",
+          "open": "10.00",
+          "high": "10.05",
+          "low": "9.98",
+          "close": "10.02",
+          "volume": "50",
+          "amount": "500"
+        },
+        {
+          "date": "20260102093500",
+          "code": "600000",
+          "open": "10.02",
+          "high": "10.08",
+          "low": "10.00",
+          "close": "10.06",
+          "volume": "55",
+          "amount": "550"
+        }
+      ],
+      "1w": [
+        {
+          "date": "20260102",
+          "code": "600000",
+          "open": "10.01",
+          "high": "10.90",
+          "low": "9.90",
+          "close": "10.70",
+          "volume": "3300",
+          "amount": "34500"
+        }
+      ],
+      "1M": [
+        {
+          "date": "20260102",
+          "code": "600000",
+          "open": "10.01",
+          "high": "11.00",
+          "low": "9.90",
+          "close": "10.90",
+          "volume": "4600",
+          "amount": "48500"
+        }
+      ]
+    },
+    "000001": {
+      "1d": [
+        {
+          "date": "20260102",
+          "code": "000001",
+          "name": "PAB",
+          "open": "11.00",
+          "high": "11.20",
+          "low": "10.90",
+          "close": "11.10",
+          "volume": "2000",
+          "amount": "22000",
+          "pre_close": "10.95"
+        }
+      ]
+    }
+  },
+  "securities": {
+    "600000": {"name": "SPDB", "market": "SSE"},
+    "000001": {"name": "PAB", "market": "SZSE"}
+  }
+}
