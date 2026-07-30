@@ -50,7 +50,7 @@ Domain 和 Application 不得导入 FastAPI、TradingView、StockDB SDK/HTTP 客
 | S1b 工作树 | `D:/TVchan-s1b-quality-calendar@58c798dd6a92e30e8c86f43afaa8fc96a0d7ad49` | 已由 PR #8 合入 main |
 | 查询候选工作树 | `D:/TVchan-s1b-stockdb-query@f9d6c196fd7c8460d7074baa4ec3099f915ed63b` | PR #9 已合并；保留为历史证据 |
 | 查询提交链 | `58c798d → d44bdbd → f9d6c19` | PR #9 head，已由 merge `1b3465c` 进入 main |
-| 本档案工作树 | `D:/TVchan-project-state`，branch `docs/project-state-org` | 仅文档维护 |
+| 本档案工作树 | `D:/TVchan-project-state`，branch `docs/project-state-baseline-rule` | 仅文档维护 |
 | 旧仓库 | `D:/TV` / `yylxy0809/tv` | 非正式、只读参考 |
 
 不要将旧 Wave 0、S1a、gate、checkpoint 或 audit worktree 当成当前实现分支；它们是历史证据，不是继续开发的起点。
@@ -129,6 +129,15 @@ Domain 和 Application 不得导入 FastAPI、TradingView、StockDB SDK/HTTP 客
 
 组织原则（用户最新管理要求）：多数开发代理不得长期空闲；管理者只负责规划、分配、裁决和验收，不亲自实施业务代码。每个交付仍须由互不自证的实现、工具/Oracle、独立审查与发布责任链构成。
 
+### 业务工作基线例外（当前有效）
+
+当前远程 `main` 是 `25cf091620f77a6432b8865013b91325f59d16d7`，但业务候选与仓库外制品的固定父基线仍可为 `413c1e132f70714830ff9a129679965c117799ea`。这是有条件的 docs-only 例外，而不是“忽略主干”的一般许可：
+
+- 已复核 `git diff --name-only 413c1e1..25cf0916` 仅输出 `PROJECT_STATE.md`；对 `backend frontend vendor src application domain infrastructure` 的目录限定 diff 为空。
+- 因此已在 `413c1e1` 建立、且未混入此后文档提交的业务 worktree 与仓库外制品无需重建。`T114` 契约继续绑定 `413c1e1`；`T115`/`T117` 可在 `T114` 独立 APPROVE 后直接实施；`T116`/`T118`/`T120` 的仓库外制品同样保留其固定对象。
+- 发布或整合时仍须从固定业务候选向最新 `main` 建立普通 PR，并重新核验 base/head、范围、CI 与 mergeability；不得借此例外改写候选历史。
+- **失效条件：** 一旦 `413c1e1..当前 main` 出现任何 `backend/`、`frontend/`、`vendor/`、`domain/`、`application/` 或 `infrastructure/` 的业务差异，本例外立即失效，必须暂停并由 Foreman 重新裁决基线与是否重建。
+
 控制面提示：历史 `T108` 记录过 SSH/HTTPS 传输阻塞；但 S1b 的正式事实已由 PR #8 / `main@9c7e119` 覆盖。若任务板仍显示其外部等待，应由任务板 owner 做事实对齐，不能把该旧状态当作当前 S1b 发布授权或阻塞。PR #9 已证明显式代理 HTTPS 路径可以原样传输并合并已批准对象。
 
 ## 8. 已知问题与风险
@@ -180,6 +189,7 @@ uv python list
 | 2026-07-30 | 初版建立：记录 `main@9c7e119`、S1a/S1b 完成、S1b PR #8、离线查询候选链 `58c798d→d44bdbd→f9d6c19`、live 未验证风险、Git 代理恢复方法与 Python 固定规则。 |
 | 2026-07-30 | 维护更新：PR #9 已将离线 StockDB adapter 与 `MarketDataQueryService` 链（head `f9d6c19`）以 merge `1b3465c` 合入；随后状态档案初版 PR #10 以 merge `7cbf39b` 合入。正式 main 更新为 `7cbf39b`；离线竖切完成不等同于 live parity。 |
 | 2026-07-30 | 维护更新：状态档案 PR #11 以 merge `413c1e1` 合入，确认 PR #9 的离线查询竖切为已完成事实。随后建立 A 组（T114/T115/T117）、B 组（T116/T118/T120）及跨线支持（T121/T122/T123）；T077 与 T111 为常驻治理卡。 |
+| 2026-07-30 | 基线裁决：`main@25cf091` 相对 `413c1e1` 仅有 `PROJECT_STATE.md` 的 docs 差异，业务目录 diff 为空。已在 `413c1e1` 建立的业务 worktree/仓库外制品无需因 docs-only 合并重建；六个指定业务目录任一出现差异即失效并重新裁决。 |
 
 ## 常驻维护规则
 
