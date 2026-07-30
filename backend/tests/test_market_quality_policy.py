@@ -56,6 +56,21 @@ def test_empty_inputs_follow_the_calendar_status_table() -> None:
     assert assessment.report.completeness is CompletenessStatus.COMPLETE
 
 
+def test_empty_bars_with_known_calendar_are_degraded_and_incomplete() -> None:
+    calendar = (date(2026, 1, 2), date(2026, 1, 5))
+    assessment = QualityPolicy().assess(
+        range=_range(),
+        bars=(),
+        same_adjustment_daily_references=(),
+        none_daily_factor_bars=(),
+        calendar_trade_days=calendar,
+    )
+
+    assert assessment.report.quality is QualityStatus.DEGRADED
+    assert assessment.report.completeness is CompletenessStatus.INCOMPLETE
+    assert assessment.report.missing_trade_days == calendar
+
+
 def test_missing_calendar_preserves_target_and_degrades() -> None:
     target = _bar(date(2026, 1, 2), Adjustment.QFQ)
     assessment = QualityPolicy().assess(
@@ -101,7 +116,7 @@ def test_repair_uses_the_calendar_adjacent_none_bar_only() -> None:
     )
 
     assert assessment.bars == (reference,)
-    assert assessment.report.quality is QualityStatus.VALIDATED
+    assert assessment.report.quality is QualityStatus.DEGRADED
     assert assessment.report.mutations[0].factor == Decimal("2")
 
 

@@ -417,6 +417,7 @@ class QualityPolicy:
             completeness = (
                 CompletenessStatus.COMPLETE if not missing else CompletenessStatus.INCOMPLETE
             )
+        degraded = degraded or bool(missing)
         quality = QualityStatus.REJECTED if any_drop and not qualified else QualityStatus.DEGRADED
         if quality is not QualityStatus.REJECTED:
             quality = QualityStatus.DEGRADED if degraded or any_drop else QualityStatus.VALIDATED
