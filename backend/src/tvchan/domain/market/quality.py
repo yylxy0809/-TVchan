@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime
-from decimal import Decimal
+from dataclasses import dataclass, replace
+from datetime import date, datetime, time
+from decimal import ROUND_HALF_UP, Context, Decimal
 from enum import StrEnum
 
-from tvchan.domain.market.model import Adjustment, BarIdentity, Symbol, Timeframe
+from tvchan.domain.market.model import (
+    SHANGHAI,
+    Adjustment,
+    Bar,
+    BarIdentity,
+    DateRange,
+    Symbol,
+    Timeframe,
+)
 
 
 class QualityStatus(StrEnum):
@@ -135,6 +143,7 @@ class QualityReport:
     completeness: CompletenessStatus
     mutations: tuple[BarMutation, ...] = ()
     messages: tuple[str, ...] = ()
+    missing_trade_days: tuple[date, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.quality, QualityStatus):
@@ -149,3 +158,280 @@ class QualityReport:
             raise TypeError("messages must be a tuple")
         if not all(isinstance(message, str) and message.strip() for message in self.messages):
             raise ValueError("messages must contain non-empty strings")
+        if not isinstance(self.missing_trade_days, tuple):
+            raise TypeError("missing_trade_days must be a tuple")
+        if not all(isinstance(day, date) for day in self.missing_trade_days):
+            raise TypeError("missing_trade_days must contain date values")
+        if self.missing_trade_days != tuple(sorted(set(self.missing_trade_days))):
+            raise ValueError("missing_trade_days must be strictly increasing without duplicates")
+
+
+@dataclass(frozen=True, slots=True)
+class QualityAssessment:
+    bars: tuple[Bar, ...]
+    report: QualityReport
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.bars, tuple) or not all(isinstance(bar, Bar) for bar in self.bars):
+            raise TypeError("bars must be a tuple of Bar values")
+        if not isinstance(self.report, QualityReport):
+            raise TypeError("report must be a QualityReport")
+
+
+def _identity_key(bar: Bar) -> tuple[str, str, datetime, str]:
+    return (str(bar.symbol), str(bar.timeframe), bar.open_time, str(bar.adjustment))
+
+
+def _snapshot(bar: Bar) -> BarValueSnapshot:
+    return BarValueSnapshot(
+        bar.open, bar.high, bar.low, bar.close, bar.volume, bar.amount, bar.pre_close
+    )
+
+
+def _canonicalize(bars: tuple[Bar, ...]) -> tuple[tuple[Bar, ...], bool, bool, bool]:
+    ordered = tuple(sorted(bars, key=_identity_key))
+    reordered = ordered != bars
+    unique: list[Bar] = []
+    collapsed = False
+    for bar in ordered:
+        if unique and bar.identity == unique[-1].identity:
+            if bar != unique[-1]:
+                return (), reordered, False, True
+            collapsed = True
+            continue
+        unique.append(bar)
+    return tuple(unique), reordered, collapsed, False
+
+
+def _validated_targets(range_: DateRange, bars: tuple[Bar, ...]) -> None:
+    if not bars:
+        return
+    first = bars[0]
+    for bar in bars:
+        if bar.symbol != first.symbol or bar.adjustment != first.adjustment:
+            raise ValueError("targets must have one symbol and adjustment")
+        if bar.timeframe is not Timeframe.DAY_1:
+            raise ValueError("targets must be daily bars")
+        if not range_.contains(bar.open_time):
+            raise ValueError("target open_time must be inside range")
+
+
+def _validated_reference_input(
+    bars: tuple[Bar, ...], target: Bar | None, *, adjustment: Adjustment | None
+) -> None:
+    for bar in bars:
+        if bar.timeframe is not Timeframe.DAY_1:
+            raise ValueError("reference bars must be daily")
+        if target is not None and bar.symbol != target.symbol:
+            raise ValueError("reference bars must match target symbol")
+        if adjustment is not None and bar.adjustment is not adjustment:
+            raise ValueError("reference bars have an invalid adjustment")
+
+
+@dataclass(frozen=True, slots=True)
+class QualityPolicy:
+    repair_scale: int = 4
+
+    def __post_init__(self) -> None:
+        if type(self.repair_scale) is not int or not 0 <= self.repair_scale <= 8:
+            raise ValueError("repair_scale must be an integer from 0 to 8")
+
+    def assess(
+        self,
+        *,
+        range: DateRange,
+        bars: tuple[Bar, ...],
+        same_adjustment_daily_references: tuple[Bar, ...],
+        none_daily_factor_bars: tuple[Bar, ...],
+        calendar_trade_days: tuple[date, ...] | None,
+    ) -> QualityAssessment:
+        if not isinstance(range, DateRange):
+            raise TypeError("range must be DateRange")
+        for name, value in (
+            ("bars", bars),
+            ("same_adjustment_daily_references", same_adjustment_daily_references),
+            ("none_daily_factor_bars", none_daily_factor_bars),
+        ):
+            if not isinstance(value, tuple) or not all(isinstance(item, Bar) for item in value):
+                raise TypeError(f"{name} must be a tuple of Bar values")
+        _validated_targets(range, bars)
+        target = bars[0] if bars else None
+        _validated_reference_input(
+            same_adjustment_daily_references,
+            target,
+            adjustment=target.adjustment if target else None,
+        )
+        _validated_reference_input(none_daily_factor_bars, target, adjustment=Adjustment.NONE)
+        if calendar_trade_days is not None:
+            if not isinstance(calendar_trade_days, tuple) or not all(
+                isinstance(day, date) for day in calendar_trade_days
+            ):
+                raise TypeError("calendar_trade_days must be a tuple of date values")
+            if calendar_trade_days != tuple(sorted(set(calendar_trade_days))):
+                raise ValueError(
+                    "calendar_trade_days must be strictly increasing without duplicates"
+                )
+            for day in calendar_trade_days:
+                session_open = datetime.combine(day, time(9, 30), SHANGHAI)
+                if not range.contains(session_open):
+                    raise ValueError("calendar trade day session must be inside range")
+
+        targets, target_reordered, target_collapsed, target_conflict = _canonicalize(bars)
+        references, reference_reordered, reference_collapsed, reference_conflict = _canonicalize(
+            same_adjustment_daily_references
+        )
+        factors, factor_reordered, factor_collapsed, factor_conflict = _canonicalize(
+            none_daily_factor_bars
+        )
+        if target_conflict or reference_conflict or factor_conflict:
+            return self._rejected()
+
+        messages: list[str] = []
+        degraded = target_reordered or reference_reordered or factor_reordered
+        if target_reordered or reference_reordered or factor_reordered:
+            messages.append("INPUT_REORDERED")
+        if target_collapsed or reference_collapsed or factor_collapsed:
+            degraded = True
+            messages.append("EXACT_DUPLICATE_COLLAPSED")
+        reference_by_day = {bar.trading_date: bar for bar in references}
+        factor_by_day = {bar.trading_date: bar for bar in factors}
+        qualified: list[Bar] = []
+        mutations: list[BarMutation] = []
+        any_drop = False
+        calendar_set = set(calendar_trade_days) if calendar_trade_days is not None else set()
+        for current in targets:
+            reference = reference_by_day.get(current.trading_date)
+            if reference is None:
+                degraded = True
+                messages.append("MISSING_SAME_ADJUSTMENT_REFERENCE")
+                qualified.append(current)
+                continue
+            if current.adjustment is Adjustment.NONE:
+                if current != reference:
+                    any_drop = True
+                    mutations.append(
+                        BarMutation(
+                            BarMutationKind.DROPPED,
+                            current.identity,
+                            "NONE_ADJUSTMENT_REFERENCE_MISMATCH",
+                            before=_snapshot(current),
+                            reference_identity=reference.identity,
+                        )
+                    )
+                else:
+                    qualified.append(current)
+                continue
+            if current == reference:
+                qualified.append(current)
+                continue
+            if calendar_trade_days is None or current.trading_date not in calendar_set:
+                degraded = True
+                messages.append("INSUFFICIENT_REPAIR_EVIDENCE")
+                qualified.append(current)
+                continue
+            calendar_index = calendar_trade_days.index(current.trading_date)
+            if calendar_index + 1 >= len(calendar_trade_days):
+                degraded = True
+                messages.append("INSUFFICIENT_REPAIR_EVIDENCE")
+                qualified.append(current)
+                continue
+            factor = factor_by_day.get(current.trading_date)
+            next_factor = factor_by_day.get(calendar_trade_days[calendar_index + 1])
+            if factor is None or next_factor is None:
+                degraded = True
+                messages.append("INSUFFICIENT_REPAIR_EVIDENCE")
+                qualified.append(current)
+                continue
+            if factor.close <= 0 or next_factor.pre_close is None:
+                any_drop = True
+                mutations.append(
+                    BarMutation(
+                        BarMutationKind.DROPPED,
+                        current.identity,
+                        "INVALID_REPAIR_EVIDENCE",
+                        before=_snapshot(current),
+                        reference_identity=reference.identity,
+                    )
+                )
+                continue
+            context = Context(prec=28, rounding=ROUND_HALF_UP)
+            repair_factor = context.divide(next_factor.pre_close, factor.close)
+            quantum = Decimal(1).scaleb(-self.repair_scale)
+
+            def repaired(value: Decimal) -> Decimal:
+                return (value * repair_factor).quantize(quantum, rounding=ROUND_HALF_UP)
+
+            candidate = replace(
+                current,
+                open=repaired(current.open),
+                high=repaired(current.high),
+                low=repaired(current.low),
+                close=repaired(current.close),
+                pre_close=repaired(current.pre_close) if current.pre_close is not None else None,
+            )
+            if (
+                candidate.open,
+                candidate.high,
+                candidate.low,
+                candidate.close,
+                candidate.pre_close,
+            ) != (
+                reference.open,
+                reference.high,
+                reference.low,
+                reference.close,
+                reference.pre_close,
+            ):
+                any_drop = True
+                mutations.append(
+                    BarMutation(
+                        BarMutationKind.DROPPED,
+                        current.identity,
+                        "UNREPAIRABLE_ADJUSTMENT_DISCONTINUITY",
+                        before=_snapshot(current),
+                        reference_identity=reference.identity,
+                    )
+                )
+                continue
+            mutations.append(
+                BarMutation(
+                    BarMutationKind.REPAIRED,
+                    current.identity,
+                    "ADJUSTMENT_DISCONTINUITY_REPAIRED",
+                    repair_factor,
+                    _snapshot(current),
+                    _snapshot(candidate),
+                    reference.identity,
+                    self.repair_scale,
+                )
+            )
+            qualified.append(candidate)
+
+        missing: tuple[date, ...] = ()
+        if calendar_trade_days is None:
+            completeness = CompletenessStatus.UNKNOWN
+            degraded = True
+        else:
+            observed = {bar.trading_date for bar in qualified}
+            missing = tuple(day for day in calendar_trade_days if day not in observed)
+            completeness = (
+                CompletenessStatus.COMPLETE if not missing else CompletenessStatus.INCOMPLETE
+            )
+        degraded = degraded or (bool(missing) and not qualified)
+        quality = QualityStatus.REJECTED if any_drop and not qualified else QualityStatus.DEGRADED
+        if quality is not QualityStatus.REJECTED:
+            quality = QualityStatus.DEGRADED if degraded or any_drop else QualityStatus.VALIDATED
+        report = QualityReport(
+            quality,
+            completeness,
+            tuple(mutations),
+            tuple(dict.fromkeys(messages)),
+            missing,
+        )
+        return QualityAssessment(tuple(qualified), report)
+
+    @staticmethod
+    def _rejected() -> QualityAssessment:
+        return QualityAssessment(
+            (), QualityReport(QualityStatus.REJECTED, CompletenessStatus.UNKNOWN)
+        )

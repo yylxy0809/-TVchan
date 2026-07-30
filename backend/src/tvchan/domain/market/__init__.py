@@ -21,6 +21,8 @@ from tvchan.domain.market.quality import (
     BarMutationKind,
     BarValueSnapshot,
     CompletenessStatus,
+    QualityAssessment,
+    QualityPolicy,
     QualityReport,
     QualityStatus,
 )
@@ -41,6 +43,8 @@ __all__ = [
     "Exchange",
     "MarketDataError",
     "MarketDataErrorCode",
+    "QualityAssessment",
+    "QualityPolicy",
     "QualityReport",
     "QualityStatus",
     "RetrievedBars",
