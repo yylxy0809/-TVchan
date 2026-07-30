@@ -2,7 +2,7 @@
 
 **状态日期：2026-07-30**
 **权威正式仓库：** `yylxy0809/-TVchan`
-**正式主干：** `main@9c7e11979f6e7b5c13414baa5900c4ec7b188182`
+**正式主干：** `main@7cbf39b73a4ddcf39cca032bd904d33959ac593a`
 **用途：** 新窗口、新 Agent 和审查者的唯一项目接管入口。它只记录已证实事实；架构细节仍以 `PROJECT.md`、`docs/WAVE1_MARKET_CONTRACT.md` 与 ADR 为准。
 
 ## 读法与状态标记
@@ -45,12 +45,12 @@ Domain 和 Application 不得导入 FastAPI、TradingView、StockDB SDK/HTTP 客
 | 项目 | 已证实坐标/用途 | 状态 |
 |---|---|---|
 | 远程仓库 | `https://github.com/yylxy0809/-TVchan` | 正式 |
-| 正式主干 | `main@9c7e11979f6e7b5c13414baa5900c4ec7b188182` | 已完成 S1b 合并 |
+| 正式主干 | `main@7cbf39b73a4ddcf39cca032bd904d33959ac593a` | PR #9 与状态档案 PR #10 均已合并 |
 | 正式本地仓 | `D:/TVchan`，其当前 checkout 可能不在 `main`，所有主干事实以 `origin/main` 为准 | 只作仓库管理 |
 | S1b 工作树 | `D:/TVchan-s1b-quality-calendar@58c798dd6a92e30e8c86f43afaa8fc96a0d7ad49` | 已由 PR #8 合入 main |
-| 查询候选工作树 | `D:/TVchan-s1b-stockdb-query@f9d6c196fd7c8460d7074baa4ec3099f915ed63b` | 进行中、未 push |
-| 查询候选链 | `58c798d → d44bdbd → f9d6c19` | 见第 6 节 |
-| 本档案工作树 | `D:/TVchan-project-state`，branch `docs/project-state` | 仅文档维护 |
+| 查询候选工作树 | `D:/TVchan-s1b-stockdb-query@f9d6c196fd7c8460d7074baa4ec3099f915ed63b` | PR #9 已合并；保留为历史证据 |
+| 查询提交链 | `58c798d → d44bdbd → f9d6c19` | PR #9 head，已由 merge `1b3465c` 进入 main |
+| 本档案工作树 | `D:/TVchan-project-state`，branch `docs/project-state-pr9` | 仅文档维护 |
 | 旧仓库 | `D:/TV` / `yylxy0809/tv` | 非正式、只读参考 |
 
 不要将旧 Wave 0、S1a、gate、checkpoint 或 audit worktree 当成当前实现分支；它们是历史证据，不是继续开发的起点。
@@ -77,7 +77,7 @@ Domain 和 Application 不得导入 FastAPI、TradingView、StockDB SDK/HTTP 客
 | P0：工程与治理基线 | 包、CI、pytest/ruff/mypy、依赖闸门、发布治理 | **已完成** | 不含业务迁移 |
 | P1 / S1a：market contract core | Canonical `Symbol`/`Timeframe`/`Bar`、ports、typed errors、DTO | **已完成**，PR #7 已进入 `main@0760cfa` | 不含 QueryService、adapter、API、Chan |
 | P2 / S1b：quality 与静态日历 | `QualityPolicy`、`StaticTradingCalendarAdapter`、ADR-005 | **已完成**，PR #8 已进入 `main@9c7e119` | 不含 StockDB/HTTP、API、Chan |
-| P3：离线 historical query 竖切 | 只读 StockDB adapter、`MarketDataQueryService`、offline fixture/fake | **进行中**，本地候选待独立复核 | 禁止以离线 fixture 声称 live parity |
+| P3：离线 historical query 竖切 | 只读 StockDB adapter、`MarketDataQueryService`、offline fixture/fake | **已完成首个离线竖切**，PR #9 已进入 main | 禁止以离线 fixture 声称 live parity；真实 provider parity 仍未验证 |
 | P4：受控读取交付 | 经新授权后接入 readiness/bootstrap、公开只读 market API、真实 provider parity | **未开始** | 不得提前接 FastAPI/TradingView |
 | P5：计算与展示链 | `ChanEnginePort`/chan.py adapter、snapshot/publication、TradingView datafeed/overlay | **未开始** | 在 P4 有稳定读取语义前不得启动 |
 
@@ -96,11 +96,11 @@ Domain 和 Application 不得导入 FastAPI、TradingView、StockDB SDK/HTTP 客
 - 完整范围严格为 7 个文件：market export、`QualityPolicy`、market infrastructure export、`StaticTradingCalendarAdapter`、两组测试、`ADR-MARKET-005`。
 - 固定验收链通过 scope v3、Oracle v3、`pytest`（73 passed）、ruff、format、mypy、dependency gate 与 diff-check；该批准不扩展到 query、StockDB、API、Chan 或 live provider。
 
-### 当前本地查询后继链：进行中，未 push
+### 查询竖切：已完成（仅离线能力）
 
 - `d44bdbd47dda994ed4438d808cae417c887d79ce`：从已合并 S1b head 引入只读 StockDB adapter（来源为已批准的离线原型）。
 - `f9d6c196fd7c8460d7074baa4ec3099f915ed63b`：加入 `MarketDataQueryService` 离线 historical-query vertical。
-- 该链在本地报告为 **121 tests**；必须以独立复核任务 `T112` 的固定结论为准，当前尚未 push、未建 PR、未合并。
+- 固定链 `58c798d → d44bdbd → f9d6c19` 已由 T112 批准、PR #9 合并：base `9c7e119...`、head `f9d6c19...`、merge commit `1b3465c02ed1be4c069b7f184a01b8c6af495b7c`。其本地验收报告为 **121 tests**；该事实仅覆盖离线能力。
 - 其文件范围包括 application market query、StockDB public-client adapter/mapping/normalization/settings、fake client、offline fixture 与测试；不代表 real StockDB 已可用。
 
 ## 7. 当前任务、依赖与优先级
@@ -108,12 +108,11 @@ Domain 和 Application 不得导入 FastAPI、TradingView、StockDB SDK/HTTP 客
 | 优先级 | 任务 | 事实状态 | 依赖 / 下一步 |
 |---|---|---|---|
 | P0 | `T111` 状态总档案 | **进行中且常驻** | 本 PR 合并后持续更新本文件 |
-| P0 | `T112` 离线查询竖切独立复核 | **进行中** | 固定链 `58c798d→d44bdbd→f9d6c19`；只有 APPROVE 才可发布 |
-| P1 | 查询链发布 PR | **待 T112 APPROVE 后新授权** | 普通 Git 传输、PR、CI、merge commit |
-| P2 | real StockDB parity / provider capability | **未验证** | 需可用服务、公开 API、独立 live 证据 |
-| P3 | API/readiness/TradingView/Chan | **未授权** | 不得因本地候选推进 |
+| P0 | `T112` 离线查询竖切独立复核 | **已完成** | 已批准并由 PR #9 合入；保留其证据链 |
+| P1 | real StockDB parity / provider capability | **未验证** | 需可用服务、公开 API、独立 live 证据 |
+| P2 | API/readiness/TradingView/Chan | **未授权** | 不得因离线竖切已合入而推进 |
 
-控制面提示：历史 `T108` 记录过 SSH/HTTPS 传输阻塞；但 S1b 的正式事实已由 PR #8 / `main@9c7e119` 覆盖。若任务板仍显示其外部等待，应由任务板 owner 做事实对齐，不能把该旧状态当作当前 S1b 发布授权或阻塞。
+控制面提示：历史 `T108` 记录过 SSH/HTTPS 传输阻塞；但 S1b 的正式事实已由 PR #8 / `main@9c7e119` 覆盖。若任务板仍显示其外部等待，应由任务板 owner 做事实对齐，不能把该旧状态当作当前 S1b 发布授权或阻塞。PR #9 已证明显式代理 HTTPS 路径可以原样传输并合并已批准对象。
 
 ## 8. 已知问题与风险
 
@@ -162,6 +161,7 @@ uv python list
 | 日期 | 事实 |
 |---|---|
 | 2026-07-30 | 初版建立：记录 `main@9c7e119`、S1a/S1b 完成、S1b PR #8、离线查询候选链 `58c798d→d44bdbd→f9d6c19`、live 未验证风险、Git 代理恢复方法与 Python 固定规则。 |
+| 2026-07-30 | 维护更新：PR #9 已将离线 StockDB adapter 与 `MarketDataQueryService` 链（head `f9d6c19`）以 merge `1b3465c` 合入；随后状态档案初版 PR #10 以 merge `7cbf39b` 合入。正式 main 更新为 `7cbf39b`；离线竖切完成不等同于 live parity。 |
 
 ## 常驻维护规则
 
