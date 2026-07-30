@@ -1,5 +1,7 @@
 # TVchan Project Command Brief
 
+> **当前状态入口：** [PROJECT_STATE.md](PROJECT_STATE.md) 记录已合并事实、活动候选、外部风险和新窗口接管步骤。本文件保留架构命令简报；两者冲突时，以较新的已证实 Git/PR 事实为准，并更新状态档案。
+
 Version: 1.0.0  
 Status: Architecture rebuild active
 

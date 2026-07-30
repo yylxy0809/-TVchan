@@ -1,5 +1,11 @@
 # TVchan
 
+## Documentation
+
+- [Project state and handover](PROJECT_STATE.md) — current verified repository state, active work, risks, and recovery steps.
+- [Project command brief](PROJECT.md) — architecture boundaries and working rules.
+- [Wave 1 market contract](docs/WAVE1_MARKET_CONTRACT.md) — implementation admission contract.
+
 Wave 0 provides the clean Python package boundary for the TVchan rebuild. It deliberately
 contains no StockDB, chan.py, TradingView, strategy, replay, or lifecycle implementation.
 
