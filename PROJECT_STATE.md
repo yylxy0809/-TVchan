@@ -2,7 +2,7 @@
 
 **状态日期：2026-07-30**
 **权威正式仓库：** `yylxy0809/-TVchan`
-**正式主干：** `main@413c1e132f70714830ff9a129679965c117799ea`
+**正式主干：** `main@18c57b573cf16b00725edf220e6c241f1e449063`
 **用途：** 新窗口、新 Agent 和审查者的唯一项目接管入口。它只记录已证实事实；架构细节仍以 `PROJECT.md`、`docs/WAVE1_MARKET_CONTRACT.md` 与 ADR 为准。
 
 ## 读法与状态标记
@@ -37,7 +37,7 @@ Domain 和 Application 不得导入 FastAPI、TradingView、StockDB SDK/HTTP 客
 2. 保持提交小、范围可审计；不得在工作树混入无关改动、改写已验收历史或用“等价代码”替代已批准 SHA。
 3. Wave 1 仅允许 market contract、只读 adapter、quality/calendar、health/readiness 与后续明确授权的查询链；禁止提前引入 Chan、snapshot、writer、realtime、lifecycle、strategy、backtest 或 TradingView 实现。
 4. 禁止使用 StockDB 私有 SDK helper（包括 `_apply_fq_in_memory`、`_merge_*`）；仅可包装公开、可测试的能力。原始数据不得回写。
-5. 公开 market HTTP API、FastAPI 装配/readiness、TradingView datafeed 和写侧均未获当前实施授权；不要因离线测试通过而接线。
+5. 已合入的范围仅为固定 TradingView market datafeed/widget 前端竖切；专有 `charting_library` 仍保持仓外，overlay、sidecar、live provider、写侧、release 与浏览器端验收均未获新授权。
 6. 任何 Python 工作前，第一条命令必须精确为 `uv python list`；随后显式使用选定解释器的绝对路径及其创建的隔离 venv。不得直接调用来源未确认的 `python`/`python3`。
 
 ## 3. 正式坐标、本地目录与工作树
@@ -45,12 +45,12 @@ Domain 和 Application 不得导入 FastAPI、TradingView、StockDB SDK/HTTP 客
 | 项目 | 已证实坐标/用途 | 状态 |
 |---|---|---|
 | 远程仓库 | `https://github.com/yylxy0809/-TVchan` | 正式 |
-| 正式主干 | `main@413c1e132f70714830ff9a129679965c117799ea` | PR #9、状态档案 PR #10 与 PR #11 均已合并 |
+| 正式主干 | `main@18c57b573cf16b00725edf220e6c241f1e449063` | PR #14 已以 merge commit 合并；两父为 `7ba98f3` 与 `bc085e6` |
 | 正式本地仓 | `D:/TVchan`，其当前 checkout 可能不在 `main`，所有主干事实以 `origin/main` 为准 | 只作仓库管理 |
 | S1b 工作树 | `D:/TVchan-s1b-quality-calendar@58c798dd6a92e30e8c86f43afaa8fc96a0d7ad49` | 已由 PR #8 合入 main |
 | 查询候选工作树 | `D:/TVchan-s1b-stockdb-query@f9d6c196fd7c8460d7074baa4ec3099f915ed63b` | PR #9 已合并；保留为历史证据 |
 | 查询提交链 | `58c798d → d44bdbd → f9d6c19` | PR #9 head，已由 merge `1b3465c` 进入 main |
-| 本档案工作树 | `D:/TVchan-project-state`，branch `docs/project-state-baseline-rule` | 仅文档维护 |
+| 本档案工作树 | `D:/TVchan-project-state-pr14`，branch `docs/project-state-pr14-merge` | 本轮合并后 docs-only 维护；旧 `D:/TVchan-project-state@40c9a8f` 仅本地草稿，不推送 |
 | 旧仓库 | `D:/TV` / `yylxy0809/tv` | 非正式、只读参考 |
 
 不要将旧 Wave 0、S1a、gate、checkpoint 或 audit worktree 当成当前实现分支；它们是历史证据，不是继续开发的起点。
@@ -79,7 +79,7 @@ Domain 和 Application 不得导入 FastAPI、TradingView、StockDB SDK/HTTP 客
 | P2 / S1b：quality 与静态日历 | `QualityPolicy`、`StaticTradingCalendarAdapter`、ADR-005 | **已完成**，PR #8 已进入 `main@9c7e119` | 不含 StockDB/HTTP、API、Chan |
 | P3：离线 historical query 竖切 | 只读 StockDB adapter、`MarketDataQueryService`、offline fixture/fake | **已完成首个离线竖切**，PR #9 已进入 main | 禁止以离线 fixture 声称 live parity；真实 provider parity 仍未验证 |
 | P4：受控读取交付 | 经新授权后接入 readiness/bootstrap、公开只读 market API、真实 provider parity | **未开始** | 不得提前接 FastAPI/TradingView |
-| P5：计算与展示链 | `ChanEnginePort`/chan.py adapter、snapshot/publication、TradingView datafeed/overlay | **未开始** | 在 P4 有稳定读取语义前不得启动 |
+| P5：计算与展示链 | `ChanEnginePort`/chan.py adapter、snapshot/publication、TradingView datafeed/overlay | **仅 datafeed/widget 竖切已完成** | PR #14 仅合入固定前端 datafeed；overlay、sidecar、live/write、release 与其余 P5 均未授权 |
 
 实时、lifecycle、replay、strategy、backtest 和 writer 属于更后阶段；除非新的 ADR 与 Foreman 明确授权，否则均为禁止项。
 
@@ -103,22 +103,41 @@ Domain 和 Application 不得导入 FastAPI、TradingView、StockDB SDK/HTTP 客
 - 固定链 `58c798d → d44bdbd → f9d6c19` 已由 T112 批准、PR #9 合并：base `9c7e119...`、head `f9d6c19...`、merge commit `1b3465c02ed1be4c069b7f184a01b8c6af495b7c`。其本地验收报告为 **121 tests**；该事实仅覆盖离线能力。
 - 其文件范围包括 application market query、StockDB public-client adapter/mapping/normalization/settings、fake client、offline fixture 与测试；不代表 real StockDB 已可用。
 
+### TradingView datafeed/widget：已完成固定前端竖切（非发布授权）
+
+- PR #14 `feat(frontend): add TradingView market datafeed` 已于 2026-07-30 以 merge commit `18c57b573cf16b00725edf220e6c241f1e449063` 合入 `main`。
+- 合并双父精确为旧 main `7ba98f31d9e8d6dc6264c770df163b872f6a6619` 与已批准候选 `bc085e66839df6e3f3bc937370b329da6a2d694c`；后者 tree 为 `c52760b72df584d443935544898825ebc1a81323`，直接父为 `8860f3a01bcff17f20116efebf9acacbfc770660`，且为新 main 祖先。
+- 累计范围精确为 11 个 `frontend/` 文件：前 10 个业务文件由 T159 固定审查，`bc085e6` 仅追加 `frontend/.gitignore`（`node_modules/`）。T219=`ARTIFACT_RELIABLE`、T220/T221=`APPROVE`；T221 仅绑定 T155 Oracle v2 与 T157 批准；T244 对冻结 PR #14 给出 `APPROVE MERGE`。
+- 合并前 PR #14 的两条 `verify` 均成功且 `CLEAN/MERGEABLE`；合并后 main CI run `30572702429` 为 `success`。这不授权 release，也不授权 `charting_library` 入库、overlay、sidecar、live provider、写侧或其他 P5 工作。
+
 ## 7. 当前任务、依赖与优先级
 
 | 优先级 | 任务 | 事实状态 | 依赖 / 下一步 |
 |---|---|---|---|
-| P0 | `T111` 状态总档案 | **进行中且常驻** | 本 PR 合并后持续更新本文件 |
+| P0 | `T111` 状态总档案 | **进行中且常驻** | PR #14 已合并；本轮从新 main 重建 docs-only 状态档案 |
 | P0 | `T112` 离线查询竖切独立复核 | **已完成** | 已批准并由 PR #9 合入；保留其证据链 |
 | P1 | real StockDB parity / provider capability | **未验证** | 需可用服务、公开 API、独立 live 证据 |
 | P2 | API/readiness/TradingView/Chan | **未授权** | 不得因离线竖切已合入而推进 |
 
-### 当前并行组织与授权边界
+### 当前受控工作链（任务板当前快照）
+
+| 工作链 | 任务 | 当前事实 | 允许的下一步 / 禁区 |
+|---|---|---|---|
+| P3 纯计算候选 | `T177` | **进行中**：在固定 `main@7ba98f3` 与已审输入上实现最小纯计算纵向切片 | 不读取 Oracle、不 push/PR；完成后才能冻结单父候选供非构建者验收 |
+| P3 Oracle 可靠性 | `T188` | **进行中**：仅独立核验 T187 的 Oracle v4 制品可靠性 | 只能输出 `ORACLE_ARTIFACT_RELIABLE` 或 `NOT_READY`；不批准语义、实现、候选、发布 |
+| Parquet v2 | `T245` | **已完成**：内部合成向量 v2 已冻结，`SYNTHETIC_PARQUET_V2_READY_FOR_INDEPENDENT_REVIEW` | 不含用户数据、网盘、正式 adapter、正式仓、写库或发布 |
+| Parquet v2 独立复核 | `T248` | **计划中**：等待对 T245 固定 v2 制品的独立复核 | 仅验证 B05 零 I/O 反证及完整向量重放；不批准实现或发布 |
+| 主图 v0 契约机械冻结 | `T246` | **进行中**：机械冻结唯一内容寻址契约对象 | 不改语义、不读候选/Oracle/代码、不实施 overlay |
+| 主图 v0 契约独立复核 | `T241` | **计划中**：仅等待 T246 固定路径、manifest、SHA256SUMS 与字节数 | 不读实现代码或专有库；APPROVE 仅允许未来版本化实现规划输入 |
+| 状态档案 | `T111` / `T249` | **进行中**：本轮以 `18c57b5` 合并事实重建 docs-only 记录 | 不复用或推送旧本地 `40c9a8f`；本轮 PR 未经审查不得合并 |
+
+### 历史组织快照（非当前调度）
 
 | 组别 | 任务 | 当前事实 | 依赖 / 禁止事项 |
 |---|---|---|---|
 | A：市场只读 API 与展示 | `T114` | **进行中**：冻结 P5 市场 API 与 TradingView 契约 | 契约先于实现；不得自批最终 Oracle |
 | A：市场只读 API 与展示 | `T115` | **进行中、等待 T114**：实现 P5 市场只读 FastAPI 接口 | 只可按 T114 READY 契约实施 |
-| A：市场只读 API 与展示 | `T117` | **计划中**：TradingView 市场 datafeed | 依赖 T114 和 API 可测试边界；不得提前接线 |
+| A：市场只读 API 与展示 | datafeed 竖切 | **已完成**：PR #14 已合入 main | 仅固定 datafeed/widget；不授权 overlay、sidecar、live/write、release 或专有库入仓 |
 | B：chan.py 纯计算接入 | `T116` | **进行中**：只读现实映射 | 先确定最小计算切片，不得将旧项目耦合迁入 |
 | B：chan.py 纯计算接入 | `T118` | **已完成**：P3 纯计算验收工具骨架 | 候选盲、未冻结具体 Chan 算法期望 |
 | B：chan.py 纯计算接入 | `T120` | **进行中**：P3 黄金样本输入包 | 冻结来源、manifest 和未决语义，不能替代实现验收 |
@@ -129,12 +148,12 @@ Domain 和 Application 不得导入 FastAPI、TradingView、StockDB SDK/HTTP 客
 
 组织原则（用户最新管理要求）：多数开发代理不得长期空闲；管理者只负责规划、分配、裁决和验收，不亲自实施业务代码。每个交付仍须由互不自证的实现、工具/Oracle、独立审查与发布责任链构成。
 
-### 业务工作基线例外（当前有效）
+### 历史业务工作基线例外（已因 PR #14 失效）
 
-当前远程 `main` 是 `25cf091620f77a6432b8865013b91325f59d16d7`，但业务候选与仓库外制品的固定父基线仍可为 `413c1e132f70714830ff9a129679965c117799ea`。这是有条件的 docs-only 例外，而不是“忽略主干”的一般许可：
+历史上，`main@25cf091620f77a6432b8865013b91325f59d16d7` 相对 `413c1e132f70714830ff9a129679965c117799ea` 仅有文档差异，因此曾允许固定父仍为 `413c1e1` 的业务候选继续完成验收。这不是一般性的“忽略主干”许可。
 
 - 已复核 `git diff --name-only 413c1e1..25cf0916` 仅输出 `PROJECT_STATE.md`；对 `backend frontend vendor src application domain infrastructure` 的目录限定 diff 为空。
-- 因此已在 `413c1e1` 建立、且未混入此后文档提交的业务 worktree 与仓库外制品无需重建。`T114` 契约继续绑定 `413c1e1`；`T115`/`T117` 可在 `T114` 独立 APPROVE 后直接实施；`T116`/`T118`/`T120` 的仓库外制品同样保留其固定对象。
+- PR #14 已将 11 个 `frontend/` 业务文件合入 main，故该 docs-only 例外现已失效：任何新业务候选必须以当前 main 为准，或先由 Foreman 重新裁决其集成基线。历史候选与证据仍保留，但不得据此继续开发。
 - 发布或整合时仍须从固定业务候选向最新 `main` 建立普通 PR，并重新核验 base/head、范围、CI 与 mergeability；不得借此例外改写候选历史。
 - **失效条件：** 一旦 `413c1e1..当前 main` 出现任何 `backend/`、`frontend/`、`vendor/`、`domain/`、`application/` 或 `infrastructure/` 的业务差异，本例外立即失效，必须暂停并由 Foreman 重新裁决基线与是否重建。
 
@@ -145,7 +164,7 @@ Domain 和 Application 不得导入 FastAPI、TradingView、StockDB SDK/HTTP 客
 1. **live `NOT_VERIFIED`**：离线 fixture、fake adapter 与 121-test 报告不能证明真实 StockDB 服务、网络、认证、分页或数据新鲜度。
 2. **真实 StockDB parity 未完成**：需验证 public `get_data` 的 1d/30m/5m、复权值、DateRange/limit、not-found、timeout 和 provider protocol 错误；不得调用私有 helper。
 3. **复权 reference 输入边界**：`QualityPolicy` 的 same-adjustment reference、`NONE` factor bar 和 calendar 均须由 application/adapter 明确提供；不得在 domain 内隐式获取或回写。
-4. **API / TradingView 未接线**：没有公开 market endpoint、datafeed、overlay 或 browser acceptance；当前客户端不得读取本地候选。
+4. **接线边界仍有限**：PR #14 已合入固定 datafeed/widget 前端竖切，但没有公开 market endpoint、专有 `charting_library`、overlay、sidecar、live provider、写侧、release 或 browser acceptance；不得把该竖切解释为全量 TradingView 交付。
 5. **旧仓库不是部署目标**：`D:/TV` 可作只读行为比较，不能复制 backend、迁移私有 SDK 路径或在其中实施新架构。
 
 ## 9. Git 网络故障与恢复
@@ -190,6 +209,7 @@ uv python list
 | 2026-07-30 | 维护更新：PR #9 已将离线 StockDB adapter 与 `MarketDataQueryService` 链（head `f9d6c19`）以 merge `1b3465c` 合入；随后状态档案初版 PR #10 以 merge `7cbf39b` 合入。正式 main 更新为 `7cbf39b`；离线竖切完成不等同于 live parity。 |
 | 2026-07-30 | 维护更新：状态档案 PR #11 以 merge `413c1e1` 合入，确认 PR #9 的离线查询竖切为已完成事实。随后建立 A 组（T114/T115/T117）、B 组（T116/T118/T120）及跨线支持（T121/T122/T123）；T077 与 T111 为常驻治理卡。 |
 | 2026-07-30 | 基线裁决：`main@25cf091` 相对 `413c1e1` 仅有 `PROJECT_STATE.md` 的 docs 差异，业务目录 diff 为空。已在 `413c1e1` 建立的业务 worktree/仓库外制品无需因 docs-only 合并重建；六个指定业务目录任一出现差异即失效并重新裁决。 |
+| 2026-07-30 | PR #14 已将固定 TradingView market datafeed/widget 候选以 merge `18c57b5` 合入 main；双父为 `7ba98f3` 与 `bc085e6`，main CI run `30572702429` 成功。累计11个 frontend 文件已按 T159/T218/T219/T220/T221/T155/T157 分层验收；无 release、overlay、sidecar、live/write 或专有库入仓授权。该业务变更使历史 `413c1e1` docs-only 基线例外失效。 |
 
 ## 常驻维护规则
 
